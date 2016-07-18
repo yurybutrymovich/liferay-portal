@@ -243,6 +243,58 @@ public class MarketplaceStorePortlet extends RemoteMVCPortlet {
 		writeJSON(actionRequest, actionResponse, jsonObject);
 	}
 
+	public synchronized void updateAllApps(
+			ActionRequest actionRequest, ActionResponse actionResponse)
+		throws Exception {
+
+		String[] appPackageIds =
+			ParamUtil.getParameterValues(
+				actionRequest, "appPackageIds", new String[0]);
+
+		File file = null;
+		boolean success = false;
+
+		JSONArray updatedApps = JSONFactoryUtil.createJSONArray();
+
+		try {
+			for (String appPackage : appPackageIds) {
+				try {
+					int appPackageId = Integer.valueOf(appPackage);
+
+					if (appPackageId > 0) {
+						file = FileUtil.createTempFile();
+
+						downloadApp(
+							actionRequest, actionResponse, appPackageId, false,
+							file);
+
+						App app = _appService.updateApp(file);
+
+						_appService.installApp(app.getRemoteAppId());
+
+						updatedApps.put(getAppJSONObject(app));
+					}
+				}
+				catch (NumberFormatException nfe) {
+				}
+			}
+
+			success = true;
+		}
+		finally {
+			if (file != null) {
+				file.delete();
+			}
+			JSONObject jsonObject = JSONFactoryUtil.createJSONObject();
+
+			jsonObject.put("updatedApps", updatedApps);
+
+			jsonObject.put("success", success);
+
+			writeJSON(actionRequest, actionResponse, jsonObject);
+		}
+	}
+
 	public void updateApp(
 			ActionRequest actionRequest, ActionResponse actionResponse)
 		throws Exception {
